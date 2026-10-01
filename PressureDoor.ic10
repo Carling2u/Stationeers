@@ -1,0 +1,82 @@
+# Two doors, a gas sensor between the pair, both doors stay on manual operation
+# Under normal situation, if the gas sensor detects a significant pressure change
+# will switch the doors to cycle like an airlock to reduce pressure loss.
+
+define Button HASH("StructureLogicButton")
+define Doors HASH("StructureGlassDoor")
+define GasSensor HASH("StructureGasSensor")
+
+alias InnerDoor d0
+bdns InnerDoor 1
+alias OutterDoor d1
+bdns OutterDoor 1
+alias BaselinePressure r15
+define PressureTolerance 10
+jal Reset
+
+Start: # Listen for lockdown event(s)
+    lb r0 GasSensor Pressure Average
+    sub r0 r0 BaselinePressure
+    abs r0 r0
+	yield
+	ble r0 PressureTolerance Start
+
+#Lock Down
+	sb Doors Mode 1
+	s InnerDoor Open 0
+	s InnerDoor Setting 0
+	s OutterDoor Open 1
+	s OutterDoor Setting 1
+
+DoorCycle:
+    lb r0 Button Setting Maximum
+    bnez r0 Reset # Reset button pressed
+
+	l r0 InnerDoor Open
+	l r1 OutterDoor Open
+	l r2 InnerDoor Setting 
+	l r3 OutterDoor Setting
+	xor r2 r0 r2
+	xor r3 r1 r3
+	or r2 r2 r3
+	beqz r2 DoorCycle
+	l r0 InnerDoor Open		#Door Open?
+	bnez r0 Outter			#Yes, Cycle Out
+
+Inner: #No, Cycle In
+	sb Doors Lock 1
+	s OutterDoor Open 0
+	yield
+	l r0 OutterDoor Idle
+	breqz r0 -1
+	s InnerDoor Open 1
+	yield
+	l r0 InnerDoor Idle
+	breqz r0 -1
+	sb Doors Lock 0
+j DoorCycle
+
+Outter:
+	sb Doors Lock 1
+	s InnerDoor Open 0
+	yield
+	l r0 InnerDoor Idle
+	breqz r0 -1
+	s OutterDoor Open 1
+	yield
+	l r0 OutterDoor Idle
+	breqz r0 -1
+	sb Doors Lock 0
+j DoorCycle
+
+Reset:
+	sb Doors Mode 1
+	sb Doors Lock 1
+	sb Doors Open 1
+	yield
+	lb r0 Doors Idle Minimum
+	breqz r0 -1
+	sb Doors Mode 0
+	sb Doors Lock 0
+	lb BaselinePressure GasSensor Pressure Average
+j ra

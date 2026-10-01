@@ -1,0 +1,73 @@
+define station HASH("StructureWeatherStation")
+
+define transmitter HASH("StructureLogicTransmitter")
+define carling HASH("Carling's Logic Transmitter")
+define jason HASH("Seans's Logic Transmitter")
+
+define display HASH("StructureConsoleLED1x2Side")
+define displayName HASH("[WEATHERWARN] LED Display")
+
+define light HASH("StructureFlashingLight")
+
+alias temp r15
+
+start:
+    lb r0 station NextWeatherEventTime Maximum
+    lb r1 station Mode Maximum
+
+    floor r0 r0
+    sbn display displayName Setting r0
+
+    sgt r1 r1 0
+	sb light On r1
+
+    beqz r0 start
+    bne r1 1 start
+
+	mod r1 r0 60
+	beqzal r1 warn
+    beqal r0 5 count
+j start
+
+playSound:
+    pop r0
+    sbn transmitter carling SoundAlert r0
+    sbn transmitter jason SoundAlert r0
+    pop r0
+    brgtz r0 3
+    yield
+    jr 2
+    sleep r0
+    sbn transmitter carling SoundAlert 0
+    sbn transmitter jason SoundAlert 0
+    bnez sp playSound
+j ra
+
+warn:
+    move temp ra
+    push 2
+    push 18
+    push 0
+    push 17
+    jal playSound
+j temp
+
+count:
+    move temp ra
+    push 1
+    push 29
+    push 1
+    push 30
+    push 1
+    push 31
+    push 1
+    push 32
+    push 1
+    push 33
+    jal playSound
+j temp
+
+#Value 	Meaning
+#0 	    No Storm
+#1 	    Storm Incoming
+#2 	    Currently in Storm 
