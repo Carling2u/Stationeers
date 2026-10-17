@@ -1,0 +1,50 @@
+define Doors HASH("StructureCompositeDoor")
+
+alias InnerDoor d0
+alias OutterDoor d1
+bdns InnerDoor 1
+bdns OutterDoor 1
+
+sb Doors Mode 1
+s InnerDoor Open 0
+s InnerDoor Setting 0
+s OutterDoor Open 0
+s OutterDoor Setting 0
+
+DoorCycle:
+	l r0 InnerDoor Open
+	l r1 OutterDoor Open
+	l r2 InnerDoor Setting 
+	l r3 OutterDoor Setting
+	xor r2 r0 r2
+	xor r3 r1 r3
+	or r2 r2 r3
+	beqz r2 DoorCycle
+	l r0 InnerDoor Open		#Door Open?
+	bnez r0 Outter			#Yes, Cycle Out
+
+Inner: #No, Cycle In
+	sb Doors Lock 1
+	s OutterDoor Open 0
+	yield
+	l r0 OutterDoor Idle
+	breqz r0 -1
+	s InnerDoor Open 1
+	yield
+	l r0 InnerDoor Idle
+	breqz r0 -1
+	sb Doors Lock 0
+j DoorCycle
+
+Outter:
+	sb Doors Lock 1
+	s InnerDoor Open 0
+	yield
+	l r0 InnerDoor Idle
+	breqz r0 -1
+	s OutterDoor Open 1
+	yield
+	l r0 OutterDoor Idle
+	breqz r0 -1
+	sb Doors Lock 0
+j DoorCycle
